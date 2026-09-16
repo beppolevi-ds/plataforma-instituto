@@ -1,0 +1,47 @@
+services:
+  moodle:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: moodle
+    hostname: moodle
+    restart: unless-stopped
+    depends_on:
+      - db
+    labels:
+      - "traefik.enable=true"
+      - "traefik.docker.network=proxy"
+      - "traefik.http.routers.moodle.rule=Host(`moodle.${HOST}`)"
+      - "traefik.http.routers.moodle.entrypoints=websecure"
+      - "traefik.http.routers.moodle.tls=true"
+      - "traefik.http.services.moodle.loadbalancer.server.url=http://moodle:80"
+    volumes:
+      - ./moodle:/var/www/html
+      - ./moodledata:/var/www/moodledata
+    env_file:
+      - .env
+      - .moodle.env
+    environment:
+      - MOODLE_HOST=moodle.${HOST}
+    networks:
+      - proxy
+      - moodle
+
+  db:
+    image: mariadb:10.11
+    container_name: moodle-db
+    hostname: moodle-db
+    restart: unless-stopped
+    env_file:
+      - .moodle.env
+    volumes:
+      - ./db-data:/var/lib/mysql
+    networks:
+      - moodle
+
+networks:
+  proxy:
+    external: true
+    name: proxy
+  moodle:
+    driver: bridge
